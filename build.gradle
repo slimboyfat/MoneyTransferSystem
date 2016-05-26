@@ -1,0 +1,88 @@
+/*
+ * Copyright 2016 slimboyfat
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+group 'org.github.slimboyfat'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+
+subprojects {
+    apply plugin: 'java'
+}
+
+allprojects {
+    repositories {
+        mavenCentral()
+    }
+}
+
+project (':modules:api') {
+    dependencies {
+        compile 'com.fasterxml.jackson.core:jackson-annotations:2.7.4'
+    }
+}
+
+project(':modules:backend') {
+    sourceSets {
+        integTest {
+            java {
+                compileClasspath += main.output + test.output
+                runtimeClasspath += main.output + test.output
+                srcDir file('src/integ/java')
+            }
+            resources.srcDir file('src/integ/resources')
+        }
+    }
+
+    configurations {
+        integTestCompile.extendsFrom testCompile
+        integTestRuntime.extendsFrom testRuntime
+    }
+
+    dependencies {
+        compile project(':modules:api')
+        compile 'org.glassfish.jersey.containers:jersey-container-jdk-http:2.22.2'
+        compile 'org.glassfish.jersey.media:jersey-media-json-jackson:2.22.2'
+
+        testCompile 'junit:junit:4.12'
+        integTestCompile 'org.glassfish.jersey.test-framework.providers:jersey-test-framework-provider-jdk-http:2.22.2'
+    }
+
+    task integTest(type: Test) {
+        mustRunAfter test
+        testClassesDir = sourceSets.integTest.output.classesDir
+        classpath = sourceSets.integTest.runtimeClasspath
+
+    }
+
+    check.dependsOn integTest
+}
+
+sourceCompatibility = 1.7
+
+dependencies {
+    compile project(':modules:api')
+    compile project(':modules:backend')
+}
+
+task fatJar(type: Jar) {
+    manifest {
+        attributes 'Main-Class': 'com.github.slimboyfat.mts.Bootstrap'
+    }
+    baseName = project.name + '-all'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
